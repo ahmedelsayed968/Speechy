@@ -19,7 +19,7 @@ convert_m4a_files() {
         filename=$(basename "$file" .m4a)
         # echo ${filename}
         ffmpeg -i "${file}" "${destination}/${filename}.wav" &
-        while [ $(jobs | wc -l) -ge 5 ]; do
+        while [ $(jobs | wc -l) -ge 10 ]; do
             wait -n  # Wait for any background process to finish before continuing
         done
     done 
