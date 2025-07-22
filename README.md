@@ -1,7 +1,8 @@
 # Speechy
 
 ## Core Workflow
-
+### Data Pipeline
+![image](./assets/data-pip.png)
 ### Gender Detection Model
 #### ECAPA Pretrained Model
 - Finetuned on the VoxCeleb dataset, providing a robust starting point for proof-of-concept.
