@@ -1,7 +1,7 @@
 ## This script is based on the https://github.com/TaoRuijie/ECAPA-TDNN/blob/main/model.py
 ## I made some changes to the original code for training a binary classifier.
 
-from typing import Optional
+from typing import Optional, Union
 import math
 
 import torch
@@ -156,16 +156,18 @@ class ECAPADetectorStrategy(VoiceGenderDetectorStrategy,nn.Module, PyTorchModelH
         x = self.fc7(x)
         
         return x
-
-    def load_audio(self, path: str) -> torch.Tensor:
+    @staticmethod
+    def load_audio(path: str) -> torch.Tensor:
         audio, sr = torchaudio.load(path)
         if sr != 16000:
             resampler = Resample(orig_freq=sr, new_freq=16000)
             audio = resampler(audio)
         return audio.mean(dim=0, keepdim=True)  # Convert to mono if stereo
     
-    def predict(self, audio : str, device: torch.device) -> str:
-        audio = self.load_audio(audio)
+    def predict(self, audio : Union[str,torch.Tensor], device: torch.device) -> str:
+        if isinstance(audio,str):
+            audio = self.load_audio(audio)
+    
         audio = audio.to(device)
         self.eval()
 
