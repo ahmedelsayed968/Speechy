@@ -11,3 +11,4 @@ wheels/
 .data
 .keys
 .env
+uploaded_files/
