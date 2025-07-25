@@ -1,0 +1,43 @@
+training:
+  dataset_revision: "sp-brain-embed"
+  models:
+    LogisticRegression:
+      include: True
+      hyperparameter_setting: default  # Can be 'default' or 'custom'
+      config:
+        custom:
+          hyperparameter1: value1
+          hyperparameter2: value2
+    SGDClassifier:
+      include: True
+      hyperparameter_setting: default  # Can be 'default' or 'custom'
+      config:
+        custom:
+          hyperparameter1: value1
+          hyperparameter2: value2
+    DecisionTreeClassifier:
+      include: True
+      hyperparameter_setting: default  # Can be 'default' or 'custom'
+      config:
+        custom:
+          hyperparameter1: value1
+          hyperparameter2: value2
+    AdaBoostClassifier:
+      include: True
+      hyperparameter_setting: default  # Can be 'default' or 'custom'
+      config:
+        custom:
+          hyperparameter1: value1
+          hyperparameter2: value2
+    GradientBoostingClassifier:
+      include: False
+      hyperparameter_setting: default  # Can be 'default' or 'custom'
+      config:
+        custom:
+          hyperparameter1: value1
+          hyperparameter2: value2
+
+wandb-settings:
+    project: "test"
+    job_type: "training"
+    tags: ['speechy','Cyshield'] # tags for the experiment
