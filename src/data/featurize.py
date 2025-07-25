@@ -73,15 +73,8 @@ class FeatureExtractor:
             audio_padded = pad(audio,(0, padding_amount),mode='constant', value=0)
             return audio_padded
     def _get_embeddings(self,batch):
-        wavs = []
-        for audio in batch[self.target_col]:
-
-            wav,_ = torchaudio.load(audio['bytes']) # [channel,Time]
-            processed_wav = self._trim_and_pad_audio(wav) # [channel,Time]
-            wav = processed_wav.squeeze(0) # [Time]
-            wavs.append(wav)
-
-        wavs_tensor = torch.stack(wavs) # [batch,Time]
+        # create tensor from raw audio bytes
+        wavs_tensor = self.create_tensor_batch_from_bytes(batch) # [batch,Time]
         wavs_tensor = wavs_tensor.to(self.device) 
 
         # Pass through model
@@ -91,7 +84,18 @@ class FeatureExtractor:
         return {
             "inputs": embeddings.cpu().numpy()
         }
+    
+    def create_tensor_batch_from_bytes(self,batch)->torch.Tensor:
+        wavs = []
+        for audio in batch[self.target_col]:
 
+            wav,_ = torchaudio.load(audio['bytes']) # [channel,Time]
+            processed_wav = self._trim_and_pad_audio(wav) # [channel,Time]
+            wav = processed_wav.squeeze(0) # [Time]
+            wavs.append(wav)
+
+        wavs_tensor = torch.stack(wavs) # [batch,Time]
+        return wavs_tensor
     def create_embeddings(self):
         # get the duration of each audio file
         ds_with_duration = self.ds.map(self.get_audio_duration,batched=True,batch_size=16)
