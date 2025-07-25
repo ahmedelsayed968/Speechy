@@ -3,28 +3,37 @@ name = "speechy"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "datasets>=4.0.0",
+    "fastapi[standard]>=0.116.1",
+    "huggingface-hub>=0.34.0",
+    "librosa>=0.11.0",
+    "noisereduce>=3.0.3",
+    "numpy>=2.2.6",
+    "omegaconf>=2.3.0",
+    "onnxruntime>=1.22.1",
+    "onnxruntime-gpu>=1.22.0",
     "pandas>=2.3.1",
-    "python-dotenv>=1.1.1",
-    "huggingface-hub>=0.33.4",
+    "pyloudnorm>=0.1.1",
     "pysoundfile>=0.9.0.post1",
+    "python-dotenv>=1.1.1",
+    "requests>=2.32.4",
     "safetensors>=0.5.3",
+    "speechbrain>=1.0.3",
+    "speechmos>=0.0.1.1",
+    "streamlit>=1.47.0",
     "torch>=2.7.1",
     "torchaudio>=2.7.1",
-    "torchcodec>=0.4.0",
-    "numpy>=2.3.1",
-    "omegaconf>=2.3.0",
-    "noisereduce>=3.0.3",
-    "fastapi[standard]>=0.116.1",
-    "streamlit>=1.47.0",
-    "requests>=2.32.4",
+    "torchcodec>=0.5",
+    "torchmetrics[audio]>=1.8.0",
+    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=6.30.0",
+    "speechmos>=0.0.1.1",
 ]
 
 [tool.uv]
