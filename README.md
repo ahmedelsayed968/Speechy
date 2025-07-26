@@ -140,16 +140,17 @@ This analysis validates the **effectiveness of the preprocessing pipeline**, esp
 ### 🔊 Listen to Audio Samples
 
 **Source (Raw)**  
-<audio controls>
-  <source src="./assets/source.wav" type="audio/wav">
-  Your browser does not support the audio element.
-</audio>
+
+https://github.com/user-attachments/assets/0137d589-0ad3-4323-94c3-171ce2526658
+
+
 
 **Target (Cleaned)**  
-<audio controls>
-  <source src="./assets/target.wav" type="audio/wav">
-  Your browser does not support the audio element.
-</audio>
+
+
+
+https://github.com/user-attachments/assets/29e4ec4e-8ef4-4dac-b5c8-c307196770f6
+
 
 ### Training Data Duration Distribution
 ![Duration Distribution](./assets/duration_dist.png)
