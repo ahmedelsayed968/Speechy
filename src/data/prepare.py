@@ -1,9 +1,22 @@
+from abc import ABC, abstractmethod
+import io
 from pathlib import Path
+from typing import Union
 from datasets import Dataset,DatasetDict,Audio,load_dataset,concatenate_datasets,ClassLabel
+import librosa
+import numpy as np
 import pandas as pd
 import os
+
+import torch
 from dotenv import load_dotenv
 import argparse
+import pyloudnorm as pyln
+from data.base import AudioNormalizer
+from vad.base import VADServiceBase
+import noisereduce as nr
+from librosa.util import normalize
+
 load_dotenv()
 
 class VoxCelebDataset:
@@ -77,6 +90,59 @@ class VoxCelebDataset:
             subset = df[df['class'] == label].sample(n=min_num_samples,replace=False,random_state=211120)
             subsets.append(subset)
         return pd.concat(subsets,ignore_index=True)
+
+
+class LoudNessNormalizer(AudioNormalizer):
+    def __init__(self,loudness_level=-12) -> None:
+        super().__init__()
+        self.loudness_level = loudness_level
+    def normalize(self, audio:np.array,sr:int)->np.array:
+      # measure the loudness first
+      meter = pyln.Meter(sr) # create BS.1770 meter
+      loudness = meter.integrated_loudness(audio)
+
+      # loudness normalize audio
+      loudness_normalized_audio = pyln.normalize.loudness(audio, loudness, self.loudness_level)
+      return loudness_normalized_audio
+
+class PeakNormalizer(AudioNormalizer):
+    def __init__(self):
+        super().__init__()
+    def normalize(self, audio):
+        return normalize(S=audio)
+
+class DataProcessor:
+    def __init__(self,
+                 vad_service:VADServiceBase,
+                 loudness_normalizer: AudioNormalizer,
+                 peak_normalizer: AudioNormalizer   
+                 ):
+        
+        self.vad_service = vad_service
+        self.loudness_normalizer = loudness_normalizer
+        self.peak_normalizer = peak_normalizer
+
+    def process_audio(self,signal:Union[bytes,np.ndarray],sr:int)->np.ndarray:
+        if isinstance(signal,bytes):
+            bytes_data = io.BytesIO(signal)
+            signal,sr= librosa.load(bytes_data,sr=sr)
+
+        # remove all noise from the audio file
+        audio = nr.reduce_noise(signal,sr=sr)
+        # trim silence
+        results = self.vad_service.process_file(torch.tensor(audio,dtype=torch.float32))
+        if results is None:
+            return None
+
+        # loud normalization
+        loud_normalizer = LoudNessNormalizer(loudness_level=-14)
+        audio = loud_normalizer.normalize(audio,sr=sr)
+        # Peak Normalization
+        audio = self.peak_normalizer.normalize(audio)
+        audio = np.clip(audio, -1.0, 1.0)
+
+        return audio
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i","--input")

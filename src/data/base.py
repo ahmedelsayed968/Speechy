@@ -8,3 +8,8 @@ class EncoderBase(ABC):
     @abstractmethod
     def encode_batch(self,batch:torch.Tensor,**kwargs):
         pass
+
+class AudioNormalizer(ABC):
+    @abstractmethod
+    def normalize(self,audio):
+        pass
