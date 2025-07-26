@@ -1,50 +1,155 @@
 # Speechy: Voice Gender Detection System
 
 ## Overview
-Speechy is an advanced system for voice gender detection, combining state-of-the-art machine learning models with classical signal processing techniques. This document details the core workflow, data pipeline, model performance, and data cleaning processes, providing a clear roadmap for development and evaluation.
+
+Speechy is an audio processing pipeline designed to detect speech and identify the speaker's gender in WAV files, addressing challenges like background noise, long silences, sudden volume changes, and inconsistent lengths. It uses the pre-trained Silero VAD for voice activity detection , a ECAPA SpeechBrain encoder for feature extraction and a classification head of trained ML model (classical approach), with custom preprocessing implemented using Python libraries like Librosa and SoundFile.
+
+---
+
+## Table of Contents
+
+- Features
+- Installation
+- Usage
+- Workflow
+- Model Performance
+- Data Cleaning
+- Dataset
+
+
+## Features
+
+- **Speech Detection**: Identifies speech segments using Silero VAD, removing silences.
+- **Gender Classification**: Uses ECAPA SpeechBrain encoder and a calibrated SVC model to determine gender.
+- **Robust Preprocessing**: Handles background noise, volume variations, and audio length inconsistencies.
+- **Scalable Pipeline**: Processes audio from ingestion to feature extraction efficiently.
+- **Deployment**: expose the sytem as a webservice 
+
+
+**Prerequisites:**
+- uv 
+
+```bash
+# Clone the repository
+git clone https://github.com/ahmedelsayed968/Speechy.git
+# Navigate to the project directory
+cd speechy
+# copy all creds to .env file
+cp .env.example .env # set the correct values for each key
+# populate the venv
+uv venv
+# activate the env
+source ./.venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Install dependencies
+uv sync
+# build the project
+uv pip install -e .
+```
+
+## Usage
+
+run the server
+```bash
+uv run uvicorn src.api.app:app
+```
+run the streamlit application
+```bash
+streamlit run /kaggle/working/Speechy/src/frontend/app.py 
+```
+enjoy playing with Speechy 😉
 
 ## Demo
 https://github.com/user-attachments/assets/3f9e2915-ac1b-4308-b08c-8bf4f7e3d0bf
 ## Core Workflow
+The following diagram outlines the end-to-end architecture for building a voice-based gender classification system using classical and deep learning approaches:
+![alt text](./assets/image.png)
 
-### Data Pipeline
-The data pipeline is designed for scalability and efficiency, transforming raw audio into model-ready features. The workflow is illustrated below:
+### 📥 Data Ingestion and Preparation
 
-![Data Pipeline](./assets/data-pip.png)
+1. **Audio Data**: Raw audio files are ingested into the pipeline.
+2. **WAV Format Conversion**: Converts input files into `.wav` format for consistent processing.
+3. **DownSampling**: Reduce the number of male audio files to balance the dataset
+4. **Splitting**: The dataset is divided into training, validation, and testing subsets.
+5. **Push to Hugging Face**: Processed data is versioned and uploaded to the Hugging Face Hub for accessibility and reproducibility (`v2`).
+
+### 🔧 Preprocessing Pipeline
+
+After downloading the dataset:
+- **Background Noise Removal**: Applies noise suppression techniques (e.g., spectral subtraction, denoising).
+- **Split by Silence / VAD**: Uses Voice Activity Detection to remove silent segments and improve model focus on speech content.
+- **Normalizer**: Standardizes audio amplitude or loudness to ensure consistency across samples.
+- **Truncate/PAD**: Ensures all audio samples meet a fixed duration by trimming or zero-padding.
+
+The result is stored as a cleaned and preprocessed version of the audio dataset (`v3`).
+
+### 🧠 Feature Extraction
+
+- **ECAPA SpeechBrain Encoder**: Transforms clean audio into robust speaker embeddings, which are stored in the **Feature Store**.
+
+### 🧪 Model Training and Calibration
+
+- **Model**: Various ML classifiers are trained using extracted features (Classical estimators).
+- **Calibration**: Improves probability estimates using techniques such as isotonic regression or Platt scaling.
+- **Deploy**: The final calibrated model is deployed as a production-ready service.
+
+
 
 ### Gender Detection Models
 
-#### ECAPA Pretrained Model
-- **Description**: Leverages a finetuned ECAPA model pretrained on the VoxCeleb dataset, providing a robust foundation for voice gender classification.
-- **Source**: Available on HuggingFace: [ECAPA Model](https://huggingface.co/JaesungHuh/voice-gender-classifier).
-- **Contribution**: Streamlined integration into the pipeline for seamless deployment and rapid prototyping.
-- **Next Steps**: Optimize model inference speed and explore transfer learning for domain-specific datasets.
 
-#### Classical Approach
-- **Status**: Planned for implementation.
-- **Approach**: Utilize classical signal processing techniques, such as pitch analysis and formant frequency extraction, to detect gender-specific vocal characteristics.
-- **Reference**: [Voice Gender Detection Repository](https://github.com/jim-schwoebel/voice_gender_detection/tree/master).
-- **Next Steps**: Implement pitch-based and formant-based features, then evaluate performance against the ECAPA model on a standardized test set.
+## ✅ Cleaning Techniques Addressed:
+- **Background Noise**: Removed using spectral subtraction.
+- **Long Silences**: Filtered via Silero VAD.
+- **Volume Variations**: Normalized with peak amplitude scaling and loudness normalizer
+- **Inconsistent Lengths**: Truncated or padded to bsaed on a threshold infered from training set equal to `11.264`.
 
-#### Hybrid Approach
-- **Status**: Planned for development.
-- **Approach**: Combine the ECAPA model’s deep learning capabilities with classical features (e.g., pitch, formants) to create a hybrid model, potentially improving robustness and generalization.
-- **Next Steps**: Develop a fusion mechanism (e.g., feature concatenation or ensemble learning) and compare performance against standalone models using metrics like accuracy, F1 score, and inference time.
+### 📈 Evaluation Metric: DNSMOS
 
-## Data Cleaning
+To evaluate how clean the audio is after processing, the **Deep Noise Suppression Mean Opinion Score (DNSMOS)** is used. It is a non-intrusive, perceptual audio quality metric inspired by **ITU-T P.835** and **P.808** standards, and provides four key scores:
 
-### Evaluation Metric: DNSMOS
-The **Deep Noise Suppression Mean Opinion Score (DNSMOS)** is a non-intrusive perceptual metric based on the **ITU-T P.835** and **P.808** frameworks, used to assess audio quality after noise suppression. It provides four key scores:
+1. **p808_mos**: Overall audio quality (1–5) – reflects general listening quality.
+2. **mos_sig**: Speech quality (1–5) – evaluates clarity and distortion (PCC ≈ 0.94).
+3. **mos_bak**: Background noise score (1–5) – assesses noise suppression success (PCC ≈ 0.98).
+4. **mos_ovr**: Overall signal score (1–5) – combines speech and noise quality (PCC ≈ 0.98).
 
-1. **p808_mos**: Overall audio quality (1–5), reflecting the general listening experience.
-2. **mos_sig**: Speech clarity (1–5), evaluating intelligibility and absence of distortions (PCC: 0.94).
-3. **mos_bak**: Background noise quality (1–5), assessing noise suppression effectiveness (PCC: 0.98).
-4. **mos_ovr**: Combined speech and noise quality (1–5), providing a holistic quality score (PCC: 0.98).
+These scores are used as a proxy to validate the effectiveness of preprocessing and help ensure high-quality audio for gender classification.
 
-These metrics ensure robust evaluation of noise suppression algorithms, critical for preparing clean audio inputs for gender detection.
 
 ### Example of Cleaned Data
+The following figure compares a raw audio waveform (**source**) with its cleaned version (**target**) after applying noise suppression and normalization:
 ![Cleaned Data Example](./assets/data-clean.png)
+
+#### 🔬 DNSMOS Quality Comparison
+
+| Metric      | Source | Target | Δ Change | Observation |
+|-------------|--------|--------|----------|-------------|
+| **p808_mos**| 3.40   | 3.39   | -0.01    | Minor change; overall perceptual quality preserved |
+| **sig_mos** | 3.47   | 3.25   | -0.22    | Slight drop in speech clarity, possibly due to aggressive suppression |
+| **bak_mos** | 3.47   | 4.11   | +0.64    | Significant improvement in background noise reduction |
+| **ovrl_mos**| 2.90   | 3.02   | +0.12    | Overall perceived quality slightly improved |
+
+#### 🧠 Key Insights
+
+- **Background Noise** was successfully suppressed, as evidenced by a **+0.64 increase** in `bak_mos`.
+- **Speech Clarity** (`sig_mos`) experienced a minor decline, likely due to some speech distortion during noise suppression.
+- **Overall Quality** (`ovrl_mos`) showed a **net improvement**, suggesting that the trade-off between clarity and cleanliness was favorable.
+- The waveform plot shows reduced amplitude and silence padding in the target, reflecting **VAD** and **normalization effects**.
+
+This analysis validates the **effectiveness of the preprocessing pipeline**, especially in denoising while maintaining usable speech quality for downstream tasks like gender classification.
+
+### 🔊 Listen to Audio Samples
+
+**Source (Raw)**  
+<audio controls>
+  <source src="./assets/source.wav" type="audio/wav">
+  Your browser does not support the audio element.
+</audio>
+
+**Target (Cleaned)**  
+<audio controls>
+  <source src="./assets/target.wav" type="audio/wav">
+  Your browser does not support the audio element.
+</audio>
 
 ### Training Data Duration Distribution
 ![Duration Distribution](./assets/duration_dist.png)
@@ -71,11 +176,15 @@ These metrics ensure robust evaluation of noise suppression algorithms, critical
 - `ROC AUC` and `Log Loss` are unavailable for models without `predict_proba` (e.g., SVC, RidgeClassifier).
 - **Key Insight**: SVC outperforms others in accuracy and F1 score, while LogisticRegressionCV excels in ROC AUC and Log Loss, indicating strong probabilistic predictions.
 
----
+### 📊 Experiment Tracking with Weights & Biases
+
+All training and evaluation runs were tracked using **[WandB](https://wandb.ai/)** to monitor performance, compare models, and visualize training metrics in real time.
+
+> 🔗 [Click here to view the full experiment dashboard on WandB](https://wandb.ai/Minds-Team/Speechy?nw=nwuserahmedeltop968)
 
 ### ✅ Final Model Selection
 
-We selected **SVC** as the final classifier based on its superior accuracy and F1 score. The model was tested on the held-out test set and achieved performance consistent with validation (≈ 0.970), demonstrating strong generalization.
+I selected **SVC** as the final classifier based on its superior accuracy and F1 score. The model was tested on the held-out test set and achieved performance consistent with validation (≈ 0.970), demonstrating strong generalization.
 
 However, SVC does **not** produce calibrated probabilities by default. This is crucial for applications where confidence scores matter (e.g., threshold tuning, model stacking, uncertainty-based filtering). To address this, we calibrated the model using **isotonic regression**, enabling reliable probabilistic outputs.
 
@@ -99,3 +208,14 @@ This confirms the effectiveness of the calibration step and readiness of the SVC
 - **Method**: Isotonic Regression (via `CalibratedClassifierCV`)
 - **Cross-validation**: 5-fold on training data
 - **Use Case**: Improves reliability of probability scores for downstream decision-making
+
+## 📂 Dataset
+
+The dataset used in this project is publicly available:
+
+- **Google Drive**: Contains the **raw version** of the dataset.
+- **Hugging Face Hub**: Hosts a **cleaned and preprocessed version** of the dataset, ready for direct use in model training and experimentation.
+
+> 🔗 [View Dataset on Hugging Face](https://huggingface.co/datasets/ahmedelsayed/VoxCeleb-Gender)
+
+Additionally, **Hugging Face** was used as a **feature store** to persist and version the extracted **ECAPA embeddings**, making it easy to share and reuse features across different training runs and model comparisons.
