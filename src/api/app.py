@@ -8,17 +8,12 @@ from uuid import uuid4
 from config.paths import PROJECT_ROOT
 from gender_detector.ecapa import ECAPADetectorStrategy
 import torchaudio
-import torch
-from vad.silero import SileroVADModel,SileroVADService
 from api.schemas import SpeechAnalysisResponse,UploadResponse
 app =  FastAPI()
+from gender_detector.speechy import SpeechyVoiceGenderDetectionService, SpeecyModelResponse
 
-processor = SileroVADModel()
-vad_service = SileroVADService(processor=processor)
+voice_detector_service = SpeechyVoiceGenderDetectionService()
 
-model_id = "JaesungHuh/voice-gender-classifier"
-gender_detector = ECAPADetectorStrategy.from_pretrained(model_id)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 UPLOADED_FILES_DIR= PROJECT_ROOT/"uploaded_files"
 UPLOADED_FILES_DIR.mkdir(exist_ok=True)
 
@@ -55,24 +50,13 @@ async def create_file(file: Annotated[UploadFile, File()],):
     finally:
         temp_path.unlink(missing_ok=True)  # Clean up temp file
 
-@app.get("/Speech/",response_model=SpeechAnalysisResponse)
+@app.get("/Speech/",response_model=SpeecyModelResponse)
 async def process_file(file_id:str):
     try:
         full_path = UPLOADED_FILES_DIR / f"{file_id}.wav"
         if not full_path.exists():
             raise HTTPException(status_code=404, detail="No file with this ID")
-
-        print(f"Requested file ID: {full_path}")
-        results = vad_service.process_file(full_path)
-
-        if results is None:
-            return SpeechAnalysisResponse(speech=False, gender=None)
-
-
-        gender = gender_detector.predict(results.unsqueeze(0),device=device)
-        return SpeechAnalysisResponse(speech=True, gender=gender)
-
-
+        return voice_detector_service.predict(audio_path=full_path)
     except Exception as e:
         print("Error occurred:", e)
         raise HTTPException(status_code=500, detail=str(e))
