@@ -2,17 +2,13 @@ from pathlib import Path
 import shutil
 from fastapi import FastAPI, UploadFile, File,HTTPException
 from typing import Annotated
-import numpy as np
-from scipy.io.wavfile import write , read as read_wav
 from uuid import uuid4
-
 import torch
 from config.paths import PROJECT_ROOT
 from data.prepare import load_audio
-from gender_detector.ecapa import ECAPADetectorStrategy
 import torchaudio
-from api.schemas import SpeechAnalysisResponse,UploadResponse
-from gender_detector.speechy import SpeechyVoiceGenderDetectionService, SpeecyModelResponse
+from api.schemas import UploadResponse
+from gender_detector.speechy import SpeechyVoiceGenderDetectionService, SpeechyModelResponse
 
 app =  FastAPI()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,7 +50,7 @@ async def create_file(file: Annotated[UploadFile, File()],):
     finally:
         temp_path.unlink(missing_ok=True)  # Clean up temp file
 
-@app.get("/Speech/",response_model=SpeecyModelResponse)
+@app.get("/Speech/",response_model=SpeechyModelResponse)
 async def process_file(file_id:str):
     try:
         full_path = UPLOADED_FILES_DIR / f"{file_id}.wav"
