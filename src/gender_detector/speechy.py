@@ -14,8 +14,8 @@ from vad.silero import SileroVADModel, SileroVADService
 
 
 class SpeecyModelResponse(BaseModel):
-    label: Optional[Literal['male','female']]
-    probability: Optional[float] = Field(...,le=1.0,ge=0.0)
+    label: Optional[Literal['male','female']] = None
+    probability: Optional[float] = Field(default=None,le=1.0,ge=0.0)
     speech: bool
     message: Optional[str] = None
 
