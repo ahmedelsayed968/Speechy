@@ -11,6 +11,8 @@ import torch
 from dotenv import load_dotenv
 import argparse
 import pyloudnorm as pyln
+import torchaudio
+from torchaudio.transforms import Resample
 from data.base import AudioNormalizer
 from vad.base import VADServiceBase
 import noisereduce as nr
@@ -161,7 +163,13 @@ def trim_and_pad_audio(
         padding_amount = target_num_sample - audio_num_samples
         audio_padded = pad(audio,(0, padding_amount),mode='constant', value=0)
         return audio_padded
-
+    
+def load_audio(path: str) -> torch.Tensor:
+    audio, sr = torchaudio.load(path)
+    if sr != 16000:
+        resampler = Resample(orig_freq=sr, new_freq=16000)
+        audio = resampler(audio)
+    return audio.mean(dim=0, keepdim=True)  # Convert to mono if stereo
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i","--input")

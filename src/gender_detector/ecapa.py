@@ -9,11 +9,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torchaudio
-from torchaudio.transforms import Resample
+
 
 
 from huggingface_hub import PyTorchModelHubMixin
 
+from data.prepare import load_audio
 from gender_detector.base import VoiceGenderDetectorStrategy
 
 class SEModule(nn.Module):
@@ -156,17 +157,11 @@ class ECAPADetectorStrategy(VoiceGenderDetectorStrategy,nn.Module, PyTorchModelH
         x = self.fc7(x)
         
         return x
-    @staticmethod
-    def load_audio(path: str) -> torch.Tensor:
-        audio, sr = torchaudio.load(path)
-        if sr != 16000:
-            resampler = Resample(orig_freq=sr, new_freq=16000)
-            audio = resampler(audio)
-        return audio.mean(dim=0, keepdim=True)  # Convert to mono if stereo
+
     
     def predict(self, audio : Union[str,torch.Tensor], device: torch.device) -> str:
         if isinstance(audio,str):
-            audio = self.load_audio(audio)
+            audio = load_audio(audio)
     
         audio = audio.to(device)
         self.eval()

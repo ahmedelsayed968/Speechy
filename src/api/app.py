@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import torch
 from config.paths import PROJECT_ROOT
+from data.prepare import load_audio
 from gender_detector.ecapa import ECAPADetectorStrategy
 import torchaudio
 from api.schemas import SpeechAnalysisResponse,UploadResponse
@@ -38,7 +39,7 @@ async def create_file(file: Annotated[UploadFile, File()],):
         shutil.copyfileobj(file.file, f)
 
     try:
-        audio_tensor = ECAPADetectorStrategy.load_audio(temp_path)
+        audio_tensor = load_audio(temp_path)
 
         file_id = f"{file.filename}_{str(uuid4())}"
         file_to_save = UPLOADED_FILES_DIR / f"{file_id}.wav"
