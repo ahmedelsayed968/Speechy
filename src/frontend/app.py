@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import os
 from dotenv import load_dotenv
+from api.schemas import SpeechyModelResponse
 load_dotenv()
 FASTAPI_URL = os.environ.get("SERVER_URL")   # Change if deployed elsewhere
 
@@ -20,6 +21,7 @@ if uploaded_file is not None:
 
         if upload_response.status_code == 200:
             data = upload_response.json()
+
             st.success("✅ File uploaded successfully!")
 
             st.markdown(f"**Sample Rate:** {data['sample_rate']}")
@@ -31,8 +33,9 @@ if uploaded_file is not None:
 
             if response.status_code == 200:
                 result = response.json()
-                if result["speech"]:
-                    st.success(f"🟢 Speech Detected\n\n**Gender**: `{result['gender']}`")
+                result = SpeechyModelResponse(**result)
+                if result.speech:
+                    st.success(f"🟢 Speech Detected\n\n**Gender**: `{result.label}`\n\n**Probability**: `{result.probability}`")
                 else:
                     st.warning("🟡 No speech detected.")
             else:

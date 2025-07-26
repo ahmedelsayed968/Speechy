@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Literal, Optional, Tuple, Union
+from typing import Tuple, Union
 import librosa
 import numpy as np
-from pydantic import BaseModel, Field
 import torch
+from api.schemas import SpeechyModelResponse
 from gender_detector.base import VoiceGenderDetectorStrategy
 from config.paths import GENDER_MODEL_PATH,GENDER_MODEL_SCALER_PATH
 from joblib import load
@@ -13,11 +13,6 @@ from data.prepare import DataProcessor,LoudNessNormalizer,PeakNormalizer, trim_a
 from vad.silero import SileroVADModel, SileroVADService
 
 
-class SpeecyModelResponse(BaseModel):
-    label: Optional[Literal['male','female']] = None
-    probability: Optional[float] = Field(default=None,le=1.0,ge=0.0)
-    speech: bool
-    message: Optional[str] = None
 
 class SpeechyGenderClassifier(VoiceGenderDetectorStrategy):
     def __init__(self,device:torch.device):
@@ -56,25 +51,25 @@ class SpeechyVoiceGenderDetectionService:
         self.classifier = SpeechyGenderClassifier(device)
         self.threshold = 11.264 # based on training 95 percentile to cut the audio files 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    def predict(self,audio_path:Union[str,Path])->SpeecyModelResponse:
+    def predict(self,audio_path:Union[str,Path])->SpeechyModelResponse:
         if not isinstance(audio_path,(str,Path)):
             raise TypeError(f"Expected audio_path as str or Path, got {type(audio_path)}")
         
         try:
             audio, _ = librosa.load(audio_path, sr=self.sample_rate)
         except Exception as e:
-            return SpeecyModelResponse(
+            return SpeechyModelResponse(
                 speech=False, 
                 message=f"Failed to load audio: {str(e)}"
             )
         audio = self.data_processor.process_audio(signal=audio,sr=self.sample_rate) # numpy 
         if audio is None:
             # no speech detected on the file
-            return SpeecyModelResponse(speech=False,message="No Speech detected!")
+            return SpeechyModelResponse(speech=False,message="No Speech detected!")
         audio = torch.tensor(audio,dtype=torch.float32).unsqueeze(0)
         audio = trim_and_pad_audio(audio,threshold=self.threshold,sample_rate=self.sample_rate)
         class_label, probability = self.classifier.predict(audio)
-        return SpeecyModelResponse(label=class_label,
+        return SpeechyModelResponse(label=class_label,
                                    probability=probability,
                                    speech=True,
                                     message="Speech detected and gender classified successfully.")
