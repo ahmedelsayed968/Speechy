@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from api.schemas import SpeechyModelResponse
 load_dotenv()
-FASTAPI_URL = os.environ.get("SERVER_URL")   # Change if deployed elsewhere
+FASTAPI_URL = os.environ.get("SERVER_URL")   
 
 st.title("🗣️ Speechy: Gender & Speech Detection")
 
@@ -24,12 +24,9 @@ if uploaded_file is not None:
 
             st.success("✅ File uploaded successfully!")
 
-            st.markdown(f"**Sample Rate:** {data['sample_rate']}")
-            st.markdown(f"**File ID:** `{data['file_id']}`")
-
             # Step 2: Call Speech analysis
             st.info("Running VAD + Gender classification...")
-            response = requests.get(f"{FASTAPI_URL}/Speech/", params={"file_id": data["file_id"]})
+            response = requests.get(f"{FASTAPI_URL}/Speechy/", params={"file_id": data["file_id"]})
 
             if response.status_code == 200:
                 result = response.json()

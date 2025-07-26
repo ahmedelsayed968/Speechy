@@ -50,7 +50,7 @@ async def create_file(file: Annotated[UploadFile, File()],):
     finally:
         temp_path.unlink(missing_ok=True)  # Clean up temp file
 
-@app.get("/Speech/",response_model=SpeechyModelResponse)
+@app.get("/Speechy/",response_model=SpeechyModelResponse)
 async def process_file(file_id:str):
     try:
         full_path = UPLOADED_FILES_DIR / f"{file_id}.wav"
