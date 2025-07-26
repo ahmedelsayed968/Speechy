@@ -4,7 +4,7 @@
 Speechy is an advanced system for voice gender detection, combining state-of-the-art machine learning models with classical signal processing techniques. This document details the core workflow, data pipeline, model performance, and data cleaning processes, providing a clear roadmap for development and evaluation.
 
 ## Demo
-▶️ [Watch the demo](./assets/project-demo.mp4)
+https://github.com/user-attachments/assets/3f9e2915-ac1b-4308-b08c-8bf4f7e3d0bf
 ## Core Workflow
 
 ### Data Pipeline
