@@ -20,15 +20,17 @@ class SpeecyModelResponse(BaseModel):
     message: Optional[str] = None
 
 class SpeechyGenderClassifier(VoiceGenderDetectorStrategy):
-    def __init__(self):
+    def __init__(self,device:torch.device):
         super().__init__()
         self.head =load(GENDER_MODEL_PATH)
         self.scaler =  load(GENDER_MODEL_SCALER_PATH)
-        self.encoder = ECAPASpeechBrainEncoder()
+        self.encoder = ECAPASpeechBrainEncoder().to(device)
         self.labels = ClassLabel(num_classes=2,names=['male','female'])
-    def predict(self,audio, device)->Tuple[str,float]:
+        self.device  = device
+    def predict(self,audio)->Tuple[str,float]:
         with torch.no_grad():
             # get embeddings
+            audio = audio.to(self.device)
             embeds = self.encoder.encode_batch(audio) #[B,1,D]
             embeds = embeds.squeeze(0) # shape: [B, D]
         # convert to numpy 
@@ -42,7 +44,7 @@ class SpeechyGenderClassifier(VoiceGenderDetectorStrategy):
         return self.labels.int2str(int(label)), float(prediction[:,label].item())
     
 class SpeechyVoiceGenderDetectionService:
-    def __init__(self):
+    def __init__(self,device:torch.device):
         self.loud_normalizer = LoudNessNormalizer()
         self.peak_normalizer = PeakNormalizer() 
         self.silero_model = SileroVADModel()
@@ -51,7 +53,7 @@ class SpeechyVoiceGenderDetectionService:
                                     loudness_normalizer=self.loud_normalizer,
                                     peak_normalizer=self.peak_normalizer)  
         self.sample_rate = 16000
-        self.classifier = SpeechyGenderClassifier()
+        self.classifier = SpeechyGenderClassifier(device)
         self.threshold = 11.264 # based on training 95 percentile to cut the audio files 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     def predict(self,audio_path:Union[str,Path])->SpeecyModelResponse:
@@ -71,7 +73,7 @@ class SpeechyVoiceGenderDetectionService:
             return SpeecyModelResponse(speech=False,message="No Speech detected!")
         audio = torch.tensor(audio,dtype=torch.float32).unsqueeze(0)
         audio = trim_and_pad_audio(audio,threshold=self.threshold,sample_rate=self.sample_rate)
-        class_label, probability = self.classifier.predict(audio,self.device)
+        class_label, probability = self.classifier.predict(audio)
         return SpeecyModelResponse(label=class_label,
                                    probability=probability,
                                    speech=True,

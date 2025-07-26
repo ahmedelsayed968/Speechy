@@ -5,14 +5,17 @@ from typing import Annotated
 import numpy as np
 from scipy.io.wavfile import write , read as read_wav
 from uuid import uuid4
+
+import torch
 from config.paths import PROJECT_ROOT
 from gender_detector.ecapa import ECAPADetectorStrategy
 import torchaudio
 from api.schemas import SpeechAnalysisResponse,UploadResponse
-app =  FastAPI()
 from gender_detector.speechy import SpeechyVoiceGenderDetectionService, SpeecyModelResponse
 
-voice_detector_service = SpeechyVoiceGenderDetectionService()
+app =  FastAPI()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+voice_detector_service = SpeechyVoiceGenderDetectionService(device=device)
 
 UPLOADED_FILES_DIR= PROJECT_ROOT/"uploaded_files"
 UPLOADED_FILES_DIR.mkdir(exist_ok=True)
