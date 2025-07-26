@@ -9,6 +9,8 @@ from speechbrain.inference.speaker import EncoderClassifier
 from datasets import load_dataset,Audio
 from torch.nn.functional import pad
 
+from data.prepare import trim_and_pad_audio
+
 class ECAPASpeechBrainEncoder(EncoderBase):
     def __init__(self) -> None:
       super().__init__()
@@ -54,24 +56,6 @@ class FeatureExtractor:
             "duration_sec": durations
         }
 
-    def _trim_and_pad_audio(
-                        self,
-                        audio:torch.Tensor,
-                        )->torch.Tensor:
-
-        target_num_sample = int(self.threshold * self.sample_rate)
-        audio_num_samples = audio.size(1)
-        if audio_num_samples == target_num_sample:
-            return audio
-
-        elif audio_num_samples > target_num_sample:
-            # do trim
-            return audio[:,:target_num_sample]
-        else:
-            # do padding
-            padding_amount = target_num_sample - audio_num_samples
-            audio_padded = pad(audio,(0, padding_amount),mode='constant', value=0)
-            return audio_padded
     def _get_embeddings(self,batch):
         # create tensor from raw audio bytes
         wavs_tensor = self.create_tensor_batch_from_bytes(batch) # [batch,Time]
@@ -90,7 +74,7 @@ class FeatureExtractor:
         for audio in batch[self.target_col]:
 
             wav,_ = torchaudio.load(audio['bytes']) # [channel,Time]
-            processed_wav = self._trim_and_pad_audio(wav) # [channel,Time]
+            processed_wav = trim_and_pad_audio(wav,threshold=self.threshold,sample_rate=self.sample_rate) # [channel,Time]
             wav = processed_wav.squeeze(0) # [Time]
             wavs.append(wav)
 
