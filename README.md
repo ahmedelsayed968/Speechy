@@ -7,15 +7,13 @@ Speechy is an audio processing pipeline designed to detect speech and identify t
 ---
 
 ## Table of Contents
-
-- Features
-- Installation
-- Usage
-- Workflow
-- Model Performance
-- Data Cleaning
-- Dataset
-
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Workflow](#core-workflow)
+- [Model Performance](#-model-performance-comparison)
+- [Data Cleaning](#-example-of-cleaned-data)
+- [Dataset](#-dataset)
 
 ## Features
 
@@ -101,7 +99,7 @@ The result is stored as a cleaned and preprocessed version of the audio dataset 
 - **Background Noise**: Removed using spectral subtraction.
 - **Long Silences**: Filtered via Silero VAD.
 - **Volume Variations**: Normalized with peak amplitude scaling and loudness normalizer
-- **Inconsistent Lengths**: Truncated or padded to bsaed on a threshold infered from training set equal to `11.264`.
+- **Inconsistent Lengths**: Truncated or padded to based on a threshold inferred from training set equal to `11.264`.
 
 ### 📈 Evaluation Metric: DNSMOS
 
@@ -220,3 +218,23 @@ The dataset used in this project is publicly available:
 > 🔗 [View Dataset on Hugging Face](https://huggingface.co/datasets/ahmedelsayed/VoxCeleb-Gender)
 
 Additionally, **Hugging Face** was used as a **feature store** to persist and version the extracted **ECAPA embeddings**, making it easy to share and reuse features across different training runs and model comparisons.
+
+## 📜 License
+
+This project is licensed under the **Creative Commons BY-NC-ND 4.0** license.  
+You may share and use the work **non-commercially**, but you **may not modify** or redistribute derivative works.
+
+> 🔗 [View Full License](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+
+## 🙏 Acknowledgments
+
+This project integrates and builds upon several open-source tools and research efforts:
+
+- **[Silero VAD](https://github.com/snakers4/silero-vad)** – For real-time voice activity detection.
+- **[ECAPA-TDNN (SpeechBrain)](https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb)** – For speaker embedding extraction.
+- **[DNSMOS](https://github.com/microsoft/DNS-Challenge)** – For non-intrusive perceptual audio quality assessment.
+- **[SpeechBrain](https://speechbrain.readthedocs.io/en/latest/)** – Toolkit for speech technologies.
+- **[Hugging Face Datasets & Hub](https://huggingface.co/datasets)** – Used for versioned dataset storage and feature management.
+- **[Weights & Biases](https://wandb.ai/)** – For experiment tracking, metric logging, and visualization.
+
+Special thanks to the open-source community for maintaining these tools and making this project possible.
