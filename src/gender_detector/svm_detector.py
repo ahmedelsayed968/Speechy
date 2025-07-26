@@ -1,23 +1,32 @@
+from pathlib import Path
+from typing import Literal, Optional, Tuple, Union
 import librosa
 import numpy as np
+from pydantic import BaseModel, Field
 import torch
 from gender_detector.base import VoiceGenderDetectorStrategy
 from config.paths import GENDER_MODEL_PATH,GENDER_MODEL_SCALER_PATH
 from joblib import load
 from data.featurize import ECAPASpeechBrainEncoder
 from datasets import ClassLabel
-from data.prepare import DataProcessor,LoudNessNormalizer,PeakNormalizer
+from data.prepare import DataProcessor,LoudNessNormalizer,PeakNormalizer, trim_and_pad_audio
 from vad.silero import SileroVADModel, SileroVADService
-from torch.nn.functional import pad
 
-class SVMDetector(VoiceGenderDetectorStrategy):
+
+class SpeecyModelResponse(BaseModel):
+    label: Optional[Literal['male','female']]
+    probability: Optional[float] = Field(...,le=1.0,ge=0.0)
+    speech: bool
+    message: Optional[str] = None
+
+class SpeechyGenderClassifier(VoiceGenderDetectorStrategy):
     def __init__(self):
         super().__init__()
         self.head =load(GENDER_MODEL_PATH)
         self.scaler =  load(GENDER_MODEL_SCALER_PATH)
         self.encoder = ECAPASpeechBrainEncoder()
         self.labels = ClassLabel(num_classes=2,names=['male','female'])
-    def predict(self,audio, device):
+    def predict(self,audio, device)->Tuple[str,float]:
         with torch.no_grad():
             # get embeddings
             embeds = self.encoder.encode_batch(audio) #[B,1,D]
@@ -29,45 +38,42 @@ class SVMDetector(VoiceGenderDetectorStrategy):
         # pass through head
         prediction = self.head.predict_proba(scaled_features)
         # get the argmax
-        label = np.argmax(prediction)
-        return self.labels.int2str(int(label)), float(prediction[:,label])
+        label = int(np.argmax(prediction))
+        return self.labels.int2str(int(label)), float(prediction[:,label].item())
     
-def trim_and_pad_audio(
-                    audio:torch.Tensor,
-                    threshold:float,
-                    sample_rate:int
-                    )->torch.Tensor:
+class SpeechyVoiceGenderDetectionService:
+    def __init__(self):
+        self.loud_normalizer = LoudNessNormalizer()
+        self.peak_normalizer = PeakNormalizer() 
+        self.silero_model = SileroVADModel()
+        self.vad_service  = SileroVADService(self.silero_model) 
+        self.data_processor = DataProcessor(vad_service=self.vad_service,
+                                    loudness_normalizer=self.loud_normalizer,
+                                    peak_normalizer=self.peak_normalizer)  
+        self.sample_rate = 16000
+        self.classifier = SpeechyGenderClassifier()
+        self.threshold = 11.264 # based on training 95 percentile to cut the audio files 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def predict(self,audio_path:Union[str,Path])->SpeecyModelResponse:
+        if not isinstance(audio_path,(str,Path)):
+            raise TypeError(f"Expected audio_path as str or Path, got {type(audio_path)}")
+        
+        try:
+            audio, _ = librosa.load(audio_path, sr=self.sample_rate)
+        except Exception as e:
+            return SpeecyModelResponse(
+                speech=False, 
+                message=f"Failed to load audio: {str(e)}"
+            )
+        audio = self.data_processor.process_audio(signal=audio,sr=self.sample_rate) # numpy 
+        if audio is None:
+            # no speech detected on the file
+            return SpeecyModelResponse(speech=False,message="No Speech detected!")
+        audio = torch.tensor(audio,dtype=torch.float32).unsqueeze(0)
+        audio = trim_and_pad_audio(audio,threshold=self.threshold,sample_rate=self.sample_rate)
+        class_label, probability = self.classifier.predict(audio,self.device)
+        return SpeecyModelResponse(label=class_label,
+                                   probability=probability,
+                                   speech=True,
+                                    message="Speech detected and gender classified successfully.")
 
-    target_num_sample = int(threshold * sample_rate)
-    audio_num_samples = audio.size(1)
-    if audio_num_samples == target_num_sample:
-        return audio
-
-    elif audio_num_samples > target_num_sample:
-        # do trim
-        return audio[:,:target_num_sample]
-    else:
-        # do padding
-        padding_amount = target_num_sample - audio_num_samples
-        audio_padded = pad(audio,(0, padding_amount),mode='constant', value=0)
-        return audio_padded
-if __name__ == "__main__":
-    audio, sr = librosa.load("/kaggle/working/Speechy/.data/Teenager Can 'Delay' Her Voice [m5TaxX6RHZ4].wav",sr=16000)
-    loud_normalizer = LoudNessNormalizer()
-    peak_noramlizer = PeakNormalizer() 
-    silero_model = SileroVADModel()
-    vad_service  = SileroVADService(silero_model) # torch input
-    data_processor = DataProcessor(vad_service=vad_service,
-                                   loudness_normalizer=loud_normalizer,
-                                   peak_normalizer=peak_noramlizer)
-
-    detector = SVMDetector()
-
-    processed_audio = data_processor.process_audio(signal=audio,sr=sr) # numpy 
-    processed_audio_tr = torch.tensor(processed_audio).unsqueeze(0)
-    # trim or pad then
-    threshold = 11.264
-    processed_audio_tr = trim_and_pad_audio(processed_audio_tr,threshold=threshold,sample_rate=sr)
-
-    class_label, probe = detector.predict(processed_audio_tr,None)
-    print(class_label,probe)    

@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
 import io
 from pathlib import Path
 from typing import Union
-from datasets import Dataset,DatasetDict,Audio,load_dataset,concatenate_datasets,ClassLabel
+from datasets import Dataset,DatasetDict,Audio,ClassLabel
 import librosa
 import numpy as np
 import pandas as pd
@@ -16,7 +15,7 @@ from data.base import AudioNormalizer
 from vad.base import VADServiceBase
 import noisereduce as nr
 from librosa.util import normalize
-
+from torch.nn.functional import pad
 load_dotenv()
 
 class VoxCelebDataset:
@@ -142,7 +141,27 @@ class DataProcessor:
         audio = np.clip(audio, -1.0, 1.0)
 
         return audio
-    
+
+def trim_and_pad_audio(
+                    audio:torch.Tensor,
+                    threshold:float,
+                    sample_rate:int
+                    )->torch.Tensor:
+
+    target_num_sample = int(threshold * sample_rate)
+    audio_num_samples = audio.size(1)
+    if audio_num_samples == target_num_sample:
+        return audio
+
+    elif audio_num_samples > target_num_sample:
+        # do trim
+        return audio[:,:target_num_sample]
+    else:
+        # do padding
+        padding_amount = target_num_sample - audio_num_samples
+        audio_padded = pad(audio,(0, padding_amount),mode='constant', value=0)
+        return audio_padded
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i","--input")
